@@ -115,10 +115,10 @@ export VAULT_IP=<vault-ip>
 sudo mkdir -p /opt/vault-agent
 
 # Copy the roleid from the AppRole output to the correct file
-sudo echo "<roleid>" > /opt/vault-agent/roleid
+echo "<ROLE-ID>" | sudo tee /opt/vault-agent/roleid > /dev/null
 
 # Copy the secretid from the AppRole output to the correct file
-sudo echo "<secretid>" > /opt/vault-agent/secretid
+echo "<SECRET-ID>" | sudo tee /opt/vault-agent/secretid > /dev/null
 
 # Set ownership
 sudo chown -R vault:vault /opt/vault-agent
@@ -154,14 +154,14 @@ vault {
   tls_disable = true
 }
 EOF
-sudo sed -i "s/<vault_ip>/$VAULT_IP/g" /etc/vault.d/agent.yml
+sudo sed -i "s/<vault_ip>/$VAULT_IP/g" /etc/vault.d/agent.hcl
 
 # Systemd
 sudo cp /usr/lib/systemd/system/vault.service /usr/lib/systemd/system/vault-agent.service
-sudo sed -i 's/agent/server/g' vault-agent.service
-sudo sed -i 's/vault.hcl/agent.hcl/g' vault-agent.service
-sudo sed -i '/Environment/d' vault-agent.service
-sudo sed -i 's/HashiCorp Vault/HashiCorp Vault Agent/g' vault-agent.service
+sudo sed -i 's/server/agent/g' /usr/lib/systemd/system/vault-agent.service
+sudo sed -i 's/vault.hcl/agent.hcl/g' /usr/lib/systemd/system/vault-agent.service
+sudo sed -i '/Environment/d' /usr/lib/systemd/system/vault-agent.service
+sudo sed -i 's/HashiCorp Vault/HashiCorp Vault Agent/g' /usr/lib/systemd/system/vault-agent.service
 sudo systemctl daemon-reload
 sudo systemctl enable --now vault-agent
 ```
