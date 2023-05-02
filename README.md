@@ -116,7 +116,7 @@ sudo apt install -y unzip
 
 # Download promtail
 cd /tmp
-curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep -v 'canary\|log\|loki' | cut -d '"' -f 4 | wget -qi -
+curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep promtail | cut -d '"' -f 4 | wget -qi -
 unzip '*.zip'
 rm *.zip
 sudo mv promtail* /usr/local/bin/promtail
