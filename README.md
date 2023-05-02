@@ -265,12 +265,15 @@ sudo systemctl restart grafana-server
 3. Go to <http://grafana_ip:3000/dashboard/import>. Enter ID `12904`, click Load.
 4. Select your Prometheus data source in the dropdown and click Import.
 
-## BONUS - Install Loki and Promtail (on instance `vault`)
+## BONUS - Install Loki and Promtail (on instance `grafana`)
 
 We can also forward Vault Audit logging to Grafana.  
 The way this works is to enable Vault audit to SYSLOG.  
-Then we use Promtail to retrieve this SYSLOG and forward this to the Loki client.  
-We can then use Grafana to add the Loki client and retrieve the logs.
+With `rsyslogd` we will forward SYSLOG to the Promtail server.
+The Promtail then parses the data and then forwards this to the Loki client.  
+We can then use Grafana to add the Loki client as a data source and retrieve the logs.
+
+### Instance `grafana`
 
 ```bash
 # Install unzip
@@ -392,19 +395,40 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now promtail
 sudo systemctl enable --now loki
-
-# Syslog forwarding
-sudo apt install -y rsyslog
-sudo tee /etc/rsyslog.d/promtail.conf >/dev/null <<EOF
-*.* action(type="omfwd" protocol="tcp" target="127.0.0.1" port="1514" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
-EOF
-sudo systemctl enable --now rsyslog
-
-# Enable Vault audit
-vault audit enable syslog
 ```
 
-You can then go to the Grafana UI and add a new datasource *Loki* with a <http://vault_ip:3100> address.  
+### Instance `vault`
+
+First we need to specify the IP address of the Grafana server.
+
+```bash
+export GRAFANA_IP=<grafana_ip>
+```
+
+Then continue the installation.
+
+```bash
+export GRAFANA_IP=192.168.65.21
+
+# Audit file and syslog
+sudo mkdir -p /opt/vault/logs
+sudo chown vault:vault /opt/vault/logs/
+vault audit enable file file_path=/opt/vault/logs/vault.log
+vault audit enable syslog
+
+# Install rsyslogd
+sudo apt install -y rsyslogd
+sudo systemctl enable --now rsyslogd
+
+# Configure log forwarding
+sudo tee /etc/rsyslog.d/promtail.conf >/dev/null <<EOF
+*.* action(type="omfwd" protocol="tcp" target="<grafana_ip>" port="1514" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
+EOF
+sudo sed -i "s/<grafana_ip>/$GRAFANA_IP/g" /etc/rsyslog.d/promtail.conf
+sudo systemctl restart rsyslogd
+```
+
+You can then go to the Grafana UI and add a new datasource *Loki* with a <http://localhost:3100> address.  
 Then you can go to Explore and enter the following query to get you started:
 
 ```
