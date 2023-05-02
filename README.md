@@ -178,8 +178,8 @@ sudo useradd -s /sbin/nologin --system -g prometheus prometheus
 # Create directories
 sudo mkdir /var/lib/prometheus
 for i in rules rules.d files_sd; do sudo mkdir -p /etc/prometheus/${i}; done
-chown -R prometheus:prometheus /var/lib/prometheus
-chown -R prometheus:prometheus /etc/prometheus
+sudo chown -R prometheus:prometheus /var/lib/prometheus
+sudo chown -R prometheus:prometheus /etc/prometheus
 
 # Download Prometheus
 cd /tmp
@@ -204,10 +204,10 @@ After=network-online.target
 User=prometheus
 Group=prometheus
 Type=simple
-ExecStart=/usr/local/bin/prometheus \
-    --config.file /etc/prometheus/prometheus.yml \
-    --storage.tsdb.path /var/lib/prometheus/ \
-    --web.console.templates=/etc/prometheus/consoles \
+ExecStart=/usr/local/bin/prometheus \\
+    --config.file /etc/prometheus/prometheus.yml \\
+    --storage.tsdb.path /var/lib/prometheus/ \\
+    --web.console.templates=/etc/prometheus/consoles \\
     --web.console.libraries=/etc/prometheus/console_libraries
 
 [Install]
@@ -238,6 +238,8 @@ sudo systemctl restart prometheus
 # Test again
 curl http://localhost:9090/api/v1/targets | jq
 ```
+
+You should see a job with the label `vault` and after a while, the `status` should be `up`.
 
 ## Install Grafana (on `grafana` instance)
 
