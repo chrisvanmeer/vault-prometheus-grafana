@@ -73,9 +73,8 @@ sudo sed -i "s/<ip>/$(hostname -I | cut -d ' ' -f1)/g" /etc/vault.d/vault.hcl
 sudo systemctl enable --now vault
 echo 'export VAULT_ADDR=http://127.0.0.1:8200' >> .bashrc
 export VAULT_ADDR=http://127.0.0.1:8200
-vault status
 vault operator init -key-shares=1 -key-threshold=1 > vault.creds
-vault operator unseal $(awk '/Unseal/ {print $NF}' vault.creds)
+vault operator unseal $(awk '/Unseal/ {print $NF}' vault.creds) >/dev/null
 vault login -no-print $(awk '/Root/ {print $NF}' vault.creds)
 vault -autocomplete-install
 source ~/.bashrc
