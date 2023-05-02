@@ -243,19 +243,14 @@ You should see a job with the label `vault` and after a while, the `status` shou
 
 ## Install Grafana (on `grafana` instance)
 
-```bash
-# Install
+```bash# Install
 wget -q -O - https://packages.grafana.com/gpg.key | gpg --dearmor | sudo tee /usr/share/keyrings/grafana.gpg > /dev/null
 echo "deb [signed-by=/usr/share/keyrings/grafana.gpg] https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
-sudo apt update
-sudo apt install grafana
+sudo apt update && sudo apt install -y grafana
 sudo systemctl enable --now grafana-server
-
-# Configure
-sudo grafana-cli admin reset-admin-password vault
 ```
 
-1. Log into Grafana on <http://grafana_ip:3000> with `admin/vault`
+1. Log into Grafana on <http://grafana_ip:3000> with `admin/amin`
 2. Go to <http://grafana_ip:3000/datasources/new>. Select Prometheus and use <http://prometheus_ip:9090> as the address. Save & Test.
 3. Go to <http://grafana_ip:3000/dashboard/import>. Enter ID `12904`, click Load.
 4. Select your Prometheus data source in the dropdown and click Import.
