@@ -8,7 +8,8 @@ In my case, I used 3 MultiPass instances named
 2. prometheus
 3. grafana
 
-These are all running Ubuntu 22.04 so these instructions are for a Debian based distribution.
+These are all running Ubuntu 22.04 so these instructions are for a Debian based distribution.  
+By the way, you could also combine all these installations into one instance, but that it not how it works in the field.
 
 ## Create MultiPass instances
 
