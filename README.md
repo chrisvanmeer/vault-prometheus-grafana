@@ -248,6 +248,8 @@ wget -q -O - https://packages.grafana.com/gpg.key | gpg --dearmor | sudo tee /us
 echo "deb [signed-by=/usr/share/keyrings/grafana.gpg] https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
 sudo apt update && sudo apt install -y grafana
 sudo systemctl enable --now grafana-server
+sudo grafana-cli plugins install grafana-piechart-panel
+sudo systemctl restart grafana-server
 ```
 
 1. Log into Grafana on <http://grafana_ip:3000> with `admin/amin`
