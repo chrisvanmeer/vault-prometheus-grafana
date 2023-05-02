@@ -254,7 +254,7 @@ sudo systemctl enable --now grafana-server
 sudo grafana-cli admin reset-admin-password vault
 ```
 
-1. Log into Grafana on <http://<prometheus_ip>:3000> with `admin/vault`
-2. Go to <http://<prometheus_ip>:3000/datasources/new>. Select Prometheus and use http://<prometheus_ip>:9090 as the address. Save & Test.
-3. Go to <http://<prometheus_ip>:3000/dashboard/import>. Enter ID `12904`, click Load.
+1. Log into Grafana on <http://grafana_ip:3000> with `admin/vault`
+2. Go to <http://grafana_ip:3000/datasources/new>. Select Prometheus and use <http://prometheus_ip:9090> as the address. Save & Test.
+3. Go to <http://grafana_ip:3000/dashboard/import>. Enter ID `12904`, click Load.
 4. Select your Prometheus data source in the dropdown and click Import.
