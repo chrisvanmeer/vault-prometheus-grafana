@@ -392,6 +392,16 @@ EOF
 sudo systemctl daemon-reload
 sudo systemctl enable --now loki
 sudo systemctl enable --now promtail
+
+# Syslog forwarding
+sudo apt install -y rsyslog
+sudo tee /etc/rsyslog.d/promtail.conf >/dev/null <<EOF
+*.* action(type="omfwd" protocol="tcp" target="127.0.0.1" port="1514" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
+EOF
+sudo systemctl enable --now rsyslog
+
+# Enable Vault audit
+vault audit enable syslog
 ```
 
 You can then go to the Grafana UI and add a new datasource *Loki* with a <http://<vault_ip>:3100> address.  
