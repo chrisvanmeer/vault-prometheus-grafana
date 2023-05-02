@@ -408,8 +408,6 @@ export GRAFANA_IP=<grafana_ip>
 Then continue the installation.
 
 ```bash
-export GRAFANA_IP=192.168.65.21
-
 # Audit file and syslog
 sudo mkdir -p /opt/vault/logs
 sudo chown vault:vault /opt/vault/logs/
