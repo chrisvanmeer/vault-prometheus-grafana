@@ -236,6 +236,7 @@ sudo sed -i "s/<vault_ip>/$VAULT_IP/g" /etc/prometheus/prometheus.yml
 sudo systemctl restart prometheus
 
 # Test again
+sleep 5
 curl http://localhost:9090/api/v1/targets | jq
 ```
 
