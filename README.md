@@ -14,7 +14,7 @@ These are all running Ubuntu 22.04 so these instructions are for a Debian based 
 
 ```bash
 # Create cloud-init file
-cat > custom-cloud-init.yml -<< EOF
+tee custom-cloud-init.yml > /dev/null <<EOF
 users:
   - default
   - name: <user>
