@@ -276,7 +276,7 @@ We can then use Grafana to add the Loki client and retrieve the logs.
 # Install unzip
 sudo apt install -y unzip
 
-# Download loki
+# Download Loki and Promtail
 cd /tmp
 curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep -v 'canary\|log' | cut -d '"' -f 4 | wget -qi -
 unzip '*.zip'
@@ -293,7 +293,7 @@ server:
   http_listen_port: 3100
 ingester:
   lifecycler:
-    address: 0.0.0.0
+    address: 127.0.0.1
     ring:
       kvstore:
         store: inmemory
@@ -390,8 +390,8 @@ WantedBy=multi-user.target
 EOF
 
 sudo systemctl daemon-reload
-sudo systemctl enable --now loki
 sudo systemctl enable --now promtail
+sudo systemctl enable --now loki
 
 # Syslog forwarding
 sudo apt install -y rsyslog
