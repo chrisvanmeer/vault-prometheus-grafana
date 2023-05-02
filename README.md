@@ -23,8 +23,8 @@ users:
     ssh_authorized_keys:
       - <ssh_key>
 EOF
-sed -i "s/<user>/$(whoami)/g" custom-cloud-init.yml
-sed -i "s%<ssh_key>%$(cat ~/.ssh/id_rsa.pub)%g" custom-cloud-init.yml
+sed -i'' -e "s/<user>/$(whoami)/g" custom-cloud-init.yml
+sed -i'' -e "s%<ssh_key>%$(cat ~/.ssh/id_rsa.pub)%g" custom-cloud-init.yml
 
 # Create instances
 multipass launch --name vault --cloud-init custom-cloud-init.yml jammy
