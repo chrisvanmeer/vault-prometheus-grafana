@@ -404,7 +404,7 @@ sudo systemctl enable --now rsyslog
 vault audit enable syslog
 ```
 
-You can then go to the Grafana UI and add a new datasource *Loki* with a <http://<vault_ip>:3100> address.  
+You can then go to the Grafana UI and add a new datasource *Loki* with a <http://vault_ip:3100> address.  
 Then you can go to Explore and enter the following query to get you started:
 
 ```
