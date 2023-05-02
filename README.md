@@ -430,5 +430,5 @@ You can then go to the Grafana UI and add a new datasource *Loki* with a <http:/
 Then you can go to Explore and enter the following query to get you started:
 
 ```
-{application="vault"} | json type="request" | json display_name!="approle" | __error__=``
+{application="vault"}`
 ```
