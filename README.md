@@ -99,6 +99,12 @@ vault read -format=json auth/approle/role/prometheus/role-id | jq -r .data.role_
 vault write -f -format=json auth/approle/role/prometheus/secret-id | jq -r .data.secret_id > secretid
 ```
 
+## Transfer files (on localhost)
+
+```bash
+scp -3 <vault_ip>:*id <prometheus_ip>:
+```
+
 ## Install Vault Agent (on `prometheus` instance)
 
 ```bash
@@ -111,16 +117,10 @@ sudo apt update && sudo apt install -y vault jq
 # Set Vault server IP
 export VAULT_IP=<vault-ip>
 
-# Create directory
+# Populate agent directory
 sudo mkdir -p /opt/vault-agent
-
-# Copy the roleid from the AppRole output to the correct file
-echo "<ROLE-ID>" | sudo tee /opt/vault-agent/roleid > /dev/null
-
-# Copy the secretid from the AppRole output to the correct file
-echo "<SECRET-ID>" | sudo tee /opt/vault-agent/secretid > /dev/null
-
-# Set ownership
+cat roleid | sudo tee /opt/vault-agent/roleid > /dev/null
+cat secretid | sudo tee /opt/vault-agent/secretid > /dev/null
 sudo chown -R vault:vault /opt/vault-agent
 
 # Create config
