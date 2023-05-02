@@ -44,10 +44,10 @@ Now you should be able to SSH into the created machines by using their IP adress
 sudo apt update && sudo apt install gpg
 wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg >/dev/null
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt update && sudo apt install vault jq
+sudo apt update && sudo apt install -y vault jq
 
 # Create config
-sudo tee /etc/vault.d/vault.hcl > /dev/null -<<EOF
+sudo tee /etc/vault.d/vault.hcl > /dev/null <<EOF
 ui           = true
 api_addr     = "http://<ip>:8200"
 cluster_addr = "http://<ip>:8201"
@@ -96,8 +96,8 @@ EOF
 # AppRole
 vault auth enable approle
 vault write auth/approle/role/prometheus policies="pol-renew,pol-prometheus-metrics"
-vault read -format=json auth/approle/role/prometheus/role-id | jq -r .data.role_id
-vault write -f -format=json auth/approle/role/prometheus/secret-id | jq -r .data.secret_id
+vault read -format=json auth/approle/role/prometheus/role-id | jq -r .data.role_id > roleid
+vault write -f -format=json auth/approle/role/prometheus/secret-id | jq -r .data.secret_id > secretid
 ```
 
 ## Install Vault Agent (on `prometheus` instance)
@@ -107,7 +107,7 @@ vault write -f -format=json auth/approle/role/prometheus/secret-id | jq -r .data
 sudo apt update && sudo apt install gpg
 wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg >/dev/null
 echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-sudo apt update && sudo apt install vault jq
+sudo apt update && sudo apt install -y vault jq
 
 # Set Vault server IP
 export VAULT_IP=<vault-ip>
@@ -126,7 +126,7 @@ sudo chown -R vault:vault /opt/vault-agent
 
 # Create config
 sudo rm /etc/vault.d/*
-sudo tee /etc/vault.d/agent.hcl > /dev/null -<<EOF
+sudo tee /etc/vault.d/agent.hcl > /dev/null <<EOF
 pid_file = "/opt/vault-agent/pidfile"
 
 auto_auth {
@@ -195,7 +195,7 @@ sudo mv consoles/ console_libraries/ /etc/prometheus/
 cd
 
 # Systemd unit
-sudo tee /usr/lib/systemd/system/prometheus.service > /dev/null -<<EOF
+sudo tee /usr/lib/systemd/system/prometheus.service > /dev/null <<EOF
 [Unit]
 Description=Prometheus
 Wants=network-online.target
@@ -222,7 +222,7 @@ sudo apt install -y jq
 curl http://localhost:9090/api/v1/targets | jq
 
 # Add Vault job
-sudo tee -a /etc/prometheus/prometheus.yml > /dev/null -<<EOF
+sudo tee -a /etc/prometheus/prometheus.yml > /dev/null <<EOF
   - job_name: 'vault'
     static_configs:
       - targets: ['<vault_ip>:8200']
