@@ -99,90 +99,6 @@ vault write auth/approle/role/prometheus policies="pol-renew,pol-prometheus-metr
 vault read -format=json auth/approle/role/prometheus/role-id | jq -r .data.role_id > roleid
 vault write -f -format=json auth/approle/role/prometheus/secret-id | jq -r .data.secret_id > secretid
 ```
-## Install Promtail (on instance `vault`)
-
-We will export the logs to Loki, which will be running on `grafana` instance.  
-So first we will have to specify that IP address.
-
-```bash
-export GRAFANA_IP=<grafana_ip>
-```
-
-Then continue with the installation.
-
-```bash
-# Install unzip
-sudo apt install -y unzip
-
-# Download promtail
-cd /tmp
-curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep promtail | cut -d '"' -f 4 | wget -qi -
-unzip '*.zip'
-rm *.zip
-sudo mv promtail* /usr/local/bin/promtail
-cd
-
-# Configuration
-sudo mkdir /etc/promtail
-sudo tee /etc/promtail/promtail.yml >/dev/null <<EOF
-server:
-  http_listen_port: 9080
-  grpc_listen_port: 0
-positions:
-  filename: /tmp/positions.yaml
-clients:
-  - url: http://<grafana_ip>:3100/loki/api/v1/push
-scrape_configs:
-  - job_name: syslog
-    syslog:
-      listen_address: 0.0.0.0:1514
-      labels:
-        job: syslog
-    relabel_configs:
-      - source_labels: [__syslog_message_hostname]
-        target_label: host
-      - source_labels: [__syslog_message_hostname]
-        target_label: hostname
-      - source_labels: [__syslog_message_severity]
-        target_label: level
-      - source_labels: [__syslog_message_app_name]
-        target_label: application
-      - source_labels: [__syslog_message_facility]
-        target_label: facility
-      - source_labels: [__syslog_connection_hostname]
-        target_label: connection_hostname
-EOF
-sudo sed -i "s/<grafana_ip>/$GRAFANA_IP/g" /etc/promtail/promtail.yml
-
-# Systemd
-sudo useradd --no-create-home --shell /bin/false promtail
-sudo tee /etc/systemd/system/promtail.service >/dev/null <<EOF
-[Unit]
-Description=Promtail service
-After=network.target
-
-[Service]
-Type=simple
-User=promtail
-ExecStart=/usr/local/bin/promtail -config.file /etc/promtail/promtail.yml
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo systemctl daemon-reload
-sudo systemctl enable --now promtail
-
-# Syslog forwarding
-sudo apt install -y rsyslog
-sudo tee /etc/rsyslog.d/promtail.conf >/dev/null <<EOF
-*.* action(type="omfwd" protocol="tcp" target="127.0.0.1" port="1514" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
-EOF
-sudo systemctl enable --now rsyslog
-
-# Enable Vault audit
-vault audit enable syslog
-```
 
 ## Transfer AppRole files (on localhost)
 
@@ -349,7 +265,12 @@ sudo systemctl restart grafana-server
 3. Go to <http://grafana_ip:3000/dashboard/import>. Enter ID `12904`, click Load.
 4. Select your Prometheus data source in the dropdown and click Import.
 
-## Install Loki (on instance `grafana`)
+## BONUS - Install Loki and Promtail (on instance `vault`)
+
+We can also forward Vault Audit logging to Grafana.  
+The way this works is to enable Vault audit to SYSLOG.  
+Then we use Promtail to retrieve this SYSLOG and forward this to the Loki client.  
+We can then use Grafana to add the Loki client and retrieve the logs.
 
 ```bash
 # Install unzip
@@ -357,13 +278,14 @@ sudo apt install -y unzip
 
 # Download loki
 cd /tmp
-curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep -v 'canary\|log\|promtail' | cut -d '"' -f 4 | wget -qi -
+curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep -v 'canary\|log' | cut -d '"' -f 4 | wget -qi -
 unzip '*.zip'
 rm *.zip
 sudo mv loki* /usr/local/bin/loki
+sudo mv promtail* /usr/local/bin/promtail
 cd
 
-# Configuration
+# Loki Configuration
 sudo mkdir /etc/loki
 sudo tee /etc/loki/loki.yml >/dev/null <<EOF
 auth_enabled: false
@@ -404,7 +326,38 @@ analytics:
   reporting_enabled: false
 EOF
 
-# Systemd
+# Promtail configuration
+sudo mkdir /etc/promtail
+sudo tee /etc/promtail/promtail.yml >/dev/null <<EOF
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+positions:
+  filename: /tmp/positions.yaml
+clients:
+  - url: http://127.0.0.1:3100/loki/api/v1/push
+scrape_configs:
+  - job_name: syslog
+    syslog:
+      listen_address: 0.0.0.0:1514
+      labels:
+        job: syslog
+    relabel_configs:
+      - source_labels: [__syslog_message_hostname]
+        target_label: host
+      - source_labels: [__syslog_message_hostname]
+        target_label: hostname
+      - source_labels: [__syslog_message_severity]
+        target_label: level
+      - source_labels: [__syslog_message_app_name]
+        target_label: application
+      - source_labels: [__syslog_message_facility]
+        target_label: facility
+      - source_labels: [__syslog_connection_hostname]
+        target_label: connection_hostname
+EOF
+
+# Loki Systemd
 sudo useradd --no-create-home --shell /bin/false loki
 sudo tee /etc/systemd/system/loki.service >/dev/null <<EOF
 [Unit]
@@ -420,11 +373,28 @@ ExecStart=/usr/local/bin/loki -config.file /etc/loki/loki.yml
 WantedBy=multi-user.target
 EOF
 
+# Promtail Systemd
+sudo useradd --no-create-home --shell /bin/false promtail
+sudo tee /etc/systemd/system/promtail.service >/dev/null <<EOF
+[Unit]
+Description=Promtail service
+After=network.target
+
+[Service]
+Type=simple
+User=promtail
+ExecStart=/usr/local/bin/promtail -config.file /etc/promtail/promtail.yml
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now loki
+sudo systemctl enable --now promtail
 ```
 
-You can then go to the Grafana UI and add a new datasource *Loki* with a <http://localhost:3100> address.  
+You can then go to the Grafana UI and add a new datasource *Loki* with a <http://<vault_ip>:3100> address.  
 Then you can go to Explore and enter the following query to get you started:
 
 ```
