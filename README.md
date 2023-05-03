@@ -448,3 +448,5 @@ For the audit logs:
 ```
 {job="vault-auditlogs"}
 ```
+
+If you want a dashboard, go to <http://grafana_ip:3000/dashboard/import>. Enter ID `13639`, click Load and select Loki as your datasource.
