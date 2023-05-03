@@ -281,15 +281,15 @@ With `rsyslogd` we will forward SYSLOG to the Promtail server.
 The Promtail then parses the data and then forwards this to the Loki client.  
 We can then use Grafana to add the Loki client as a data source and retrieve the logs.
 
-### Part 1 - Install Loki and Promtail (on instance `prometheus`)
+### Part 1 - Install Loki (on instance `prometheus`)
 
 ```bash
 # Install unzip
 sudo apt install -y unzip
 
-# Download Loki and Promtail
+# Download Loki
 cd /tmp
-curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep -v 'canary\|log' | cut -d '"' -f 4 | wget -qi -
+curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep -v 'canary\|log\|prom' | cut -d '"' -f 4 | wget -qi -
 unzip '*.zip'
 rm *.zip
 sudo mv loki* /usr/local/bin/loki
@@ -313,7 +313,8 @@ ingester:
   chunk_idle_period: 5m
   chunk_retain_period: 30s
   wal:
-    enabled: false
+    enabled: true
+    dir: /tmp/wal
 schema_config:
   configs:
   - from: 2020-05-15
@@ -337,37 +338,6 @@ analytics:
   reporting_enabled: false
 EOF
 
-# Promtail configuration
-sudo mkdir /etc/promtail
-sudo tee /etc/promtail/promtail.yml >/dev/null <<EOF
-server:
-  http_listen_port: 9080
-  grpc_listen_port: 0
-positions:
-  filename: /tmp/positions.yaml
-clients:
-  - url: http://127.0.0.1:3100/loki/api/v1/push
-scrape_configs:
-  - job_name: syslog
-    syslog:
-      listen_address: 0.0.0.0:1514
-      labels:
-        job: syslog
-    relabel_configs:
-      - source_labels: [__syslog_message_hostname]
-        target_label: host
-      - source_labels: [__syslog_message_hostname]
-        target_label: hostname
-      - source_labels: [__syslog_message_severity]
-        target_label: level
-      - source_labels: [__syslog_message_app_name]
-        target_label: application
-      - source_labels: [__syslog_message_facility]
-        target_label: facility
-      - source_labels: [__syslog_connection_hostname]
-        target_label: connection_hostname
-EOF
-
 # Loki Systemd
 sudo useradd --no-create-home --shell /bin/false loki
 sudo tee /etc/systemd/system/loki.service >/dev/null <<EOF
@@ -383,6 +353,64 @@ ExecStart=/usr/local/bin/loki -config.file /etc/loki/loki.yml
 [Install]
 WantedBy=multi-user.target
 EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now loki
+```
+
+### Part 2 - Enable audit logging and install Promtail (on instance `vault`)
+
+First we need to specify the IP address of the Prometheus instance.
+
+```bash
+export PROMETHEUS_IP=<prometheus_ip>
+```
+
+Then continue the installation.
+
+```bash
+# Enable Vault audit devices
+vault audit enable file file_path=/var/log/vault/vault-audit.log mode=0644
+vault audit enable syslog
+
+# Install unzip
+sudo apt install -y unzip
+
+# Download Promtail
+cd /tmp
+curl -s https://api.github.com/repos/grafana/loki/releases/latest | grep browser_download_url | grep linux-$(dpkg --print-architecture) | grep prom | cut -d '"' -f 4 | wget -qi -
+unzip '*.zip'
+rm *.zip
+sudo mv promtail* /usr/local/bin/promtail
+cd
+
+# Promtail configuration
+sudo mkdir /etc/promtail
+sudo tee /etc/promtail/promtail.yml >/dev/null <<EOF
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+positions:
+  filename: /tmp/positions.yaml
+clients:
+  - url: http://<prometheus_ip>:3100/loki/api/v1/push
+scrape_configs:
+  - job_name: vault_audit_logs
+    static_configs:
+    - targets:
+        - localhost
+      labels:
+        job: vault-auditlogs
+        __path__: /var/log/vault/vault-audit.log
+  - job_name: vault_system_operational_logs
+    static_configs:
+    - targets:
+        - localhost
+      labels:
+        job: vault-systemlogs
+        __path__: /var/log/vault/vault.log
+EOF
+sudo sed -i "s/<prometheus_ip>/$PROMETHEUS_IP/g" /etc/promtail/promtail.yml
 
 # Promtail Systemd
 sudo useradd --no-create-home --shell /bin/false promtail
@@ -402,41 +430,17 @@ EOF
 
 sudo systemctl daemon-reload
 sudo systemctl enable --now promtail
-sudo systemctl enable --now loki
-```
-
-### Part 2 - Forward Vault auditing (on instance `vault`)
-
-First we need to specify the IP address of the Prometheus instance.
-
-```bash
-export PROMETHEUS_IP=<prometheus_ip>
-```
-
-Then continue the installation.
-
-```bash
-# Audit file and syslog
-sudo mkdir -p /opt/vault/logs
-sudo chown vault:vault /opt/vault/logs/
-vault audit enable file file_path=/opt/vault/logs/vault.log
-vault audit enable syslog
-
-# Install rsyslog
-sudo apt install -y rsyslog
-sudo systemctl enable --now rsyslog
-
-# Configure log forwarding
-sudo tee /etc/rsyslog.d/promtail.conf >/dev/null <<EOF
-*.* action(type="omfwd" protocol="tcp" target="<prometheus_ip>" port="1514" Template="RSYSLOG_SyslogProtocol23Format" TCP_Framing="octet-counted" KeepAlive="on")
-EOF
-sudo sed -i "s/<prometheus_ip>/$PROMETHEUS_IP/g" /etc/rsyslog.d/promtail.conf
-sudo systemctl restart rsyslog
 ```
 
 You can then go to the Grafana UI and add a new datasource *Loki* with a <http://prometheus_ip:3100> address.  
-Then you can go to Explore and enter the following query to get you started:
+Then you can go to Explore and enter the following query to get you started.
 
+For the system logs:
 ```
-{application="vault"}`
+{job="vault-systemlogs"}
+```
+
+For the audit logs:
+```
+{job="vault-auditlogs"}
 ```
