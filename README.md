@@ -70,6 +70,14 @@ telemetry {
 EOF
 sudo sed -i "s/<ip>/$(hostname -I | cut -d ' ' -f1)/g" /etc/vault.d/vault.hcl
 
+# Create log dir
+sudo mkdir -p /var/log/vault
+sudo chown vault:vault /var/log/vault
+
+# Edit systemd to redirect output to file
+sudo sed -i "/^LimitMEMLOCK=.*$/a StandardOutput=append:/var/log/vault.log\nStandardError=append:/var/log/vault.log" /usr/lib/systemd/system/vault.service
+sudo systemctl daemon-reload
+
 # Start Vault
 sudo systemctl enable --now vault
 echo 'export VAULT_ADDR=http://127.0.0.1:8200' >> .bashrc
