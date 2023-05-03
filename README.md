@@ -233,6 +233,7 @@ sudo systemctl enable --now prometheus
 
 # Test Prometheus
 sudo apt install -y jq
+sleep 5
 curl http://localhost:9090/api/v1/targets | jq
 
 # Add Vault job
@@ -275,11 +276,14 @@ sudo systemctl restart grafana-server
 
 ## BONUS - Use Promtail and Loki to read log files into Grafana
 
-We can also forward Vault Audit logging to Grafana.  
-The way this works is to enable Vault audit to SYSLOG.  
-With `rsyslogd` we will forward SYSLOG to the Promtail server.
-The Promtail then parses the data and then forwards this to the Loki client.  
-We can then use Grafana to add the Loki client as a data source and retrieve the logs.
+We can also forward Vault logging to Grafana.  
+The components we will use are Loki (the receiver) and Promtail (the sender).  
+  
+Loki is the receiving end of the log files and we will install that on the `prometheus` instance.    
+We will then install Promtail on the `vault` instance.
+We are already redirecting the Vault systemd output to a log file (system logs), but we will also enable a Vault audit device to another log file (audit trail).  
+So we will configure Promtail to scrape these logs and send them to Loki.
+We can then use Grafana to add Loki as a data source and retrieve the logs.
 
 ### Part 1 - Install Loki (on instance `prometheus`)
 
